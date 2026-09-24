@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPU Scheduling Simulator</title>
+
+<style>
+/* =========================================================
+   GLOBAL & ORIGINAL COLOR PALETTE
+========================================================= */
+:root {
+    --bg: #E3F2FD;
+    --panel: #90CAF9;
+    --line: #90CAF9;
+    --text: #0D2B4D;
+    --muted: #315D82;
+    --accent: #0D47A1;
+    --accent2: #2196F3;
+    --danger: #A8324A;
+
+    --body-start: #E3F2FD;
+    --body-end: #D7ECFA;
+    --header-bg: rgba(227, 242, 253, 0.92);
+    --card-bg: rgba(255, 255, 255, 0.90);
+    --input-bg: #F5FAFE;
+    --button-bg: #2196F3;
+    --algo-bg: #E8F4FD;
+    --algo-active-bg: #C9E6FA;
+    --table-head: #0D47A1;
+    --idle-bg: #78909C;
+    --shadow: rgba(13, 71, 161, 0.16);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(135deg, var(--body-start), var(--body-end) 55%, #c2e0f9);
+    color: var(--text);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* =========================================================
+   CLEAN TECHNOLOGY BACKGROUND OVERLAY
+========================================================= */
+.tech-bg-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+/* Tech Grid Pattern */
+.tech-grid {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(to right, rgba(13, 71, 161, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(13, 71, 161, 0.06) 1px, transparent 1px);
+    background-size: 50px 50px;
+}
+
+/* Circuit Lines Vector Background */
+.circuit-svg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0.12;
+}
+
+.circuit-node-dot {
+    animation: pulseGlow 3s infinite alternate ease-in-out;
+}
+
+@keyframes pulseGlow {
+    0% { opacity: 0.2; transform: scale(0.9); }
+    100% { opacity: 0.8; transform: scale(1.1); }
+}
+
+/* =========================================================
+   HOME PAGE SECTION
+========================================================= */
+#coverPage {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 50px 20px;
+}
+
+.cover-content {
+    background: transparent;
+    max-width: 900px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Increased Spacing for Text Elements */
+.project-subtitle {
+    font-size: 22px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    color: var(--muted);
+    margin-bottom: 12px;
+}
+
+.course-topic {
+    font-size: 32px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: var(--accent2);
+    margin-bottom: 35px;
+}
+
+/* Extra-Large KALI Header */
+.cover-title {
+    font-size: clamp(100px, 15vw, 170px);
+    font-weight: 900;
+    letter-spacing: 18px;
+    color: var(--accent);
+    margin: 0 0 45px 0;
+    line-height: 0.9;
+    text-shadow: 0 10px 30px rgba(13, 71, 161, 0.25);
+}
+
+.cover-names {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 2.2;
+    color: var(--text);
+    margin-bottom: 35px;
+}
+
+.cover-course {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 55px;
+    letter-spacing: 2px;
+}
+
+.btn-proceed {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    font-size: 20px;
+    font-weight: 800;
+    padding: 18px 45px;
+    border-radius: 14px;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 30px var(--shadow);
+    transition: all 0.25s ease;
+}
+
+.btn-proceed:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(13, 71, 161, 0.35);
+}
+
+/* Hide Simulator View Initially */
+#simulatorView {
+    display: none;
+    position: relative;
+    z-index: 1;
+}
+
+/* =========================================================
+   HEADER & NAVIGATION
+========================================================= */
+header {
+    padding: 20px 5%;
+    border-bottom: 1px solid var(--line);
+    background: var(--header-bg);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.brand { display: flex; gap: 12px; align-items: center; }
+h1 { margin: 0; font-size: 20px; }
+
+.progres-tracker {
+    display: flex; gap: 15px; align-items: center;
+}
+.step-label { font-size: 12px; color: var(--muted); font-weight: bold; }
+.step-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--line); transition: 0.3s;
+}
+.step-dot.active {
+    background: var(--accent); transform: scale(1.2);
+}
+.step-dot.completed {
+    background: var(--accent2);
+}
+
+/* =========================================================
+   MAIN LAYOUT & CARDS
+========================================================= */
+main {
+    width: min(1200px, 92%);
+    margin: 40px auto 60px;
+}
+
+.sim-step {
+    display: none;
+    animation: fadeIn 0.4s ease-in-out;
+}
+.sim-step.active { display: block; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 30px;
+    box-shadow: 0 12px 35px var(--shadow);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    margin-bottom: 20px; border-bottom: 1px solid var(--line); padding-bottom: 15px;
+}
+.card h2 { font-size: 18px; margin: 0 0 5px 0; color: var(--accent); }
+.hint { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0; }
+
+/* Tables & Controls */
+input, select {
+    padding: 10px; background: var(--input-bg);
+    border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; outline: none; width: 100%;
+}
+
+table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: center; font-size: 13px; }
+th { color: var(--table-head); text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
+
+.input-grid {
+    display: grid; grid-template-columns: 2fr 1fr; gap: 25px; align-items: start;
+}
+
+button {
+    border: 0; border-radius: 10px; padding: 12px 20px;
+    color: white; background: var(--button-bg);
+    cursor: pointer; font-weight: 700; font-size: 14px;
+    transition: 0.2s;
+}
+button:hover { filter: brightness(1.1); }
+
+.btn-back { background: var(--muted); }
+.btn-retry {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    font-size: 16px;
+    padding: 15px 40px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(13, 71, 161, 0.25);
+    transition: all 0.25s ease;
+}
+.btn-retry:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(13, 71, 161, 0.35);
+}
+.btn-run {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    font-size: 16px; padding: 15px 30px;
+}
+.btn-danger { background: var(--danger); }
+
+.algo-btn {
+    background: var(--algo-bg); color: var(--text);
+    border: 1px solid var(--line); width: 100%; text-align: left;
+    margin-bottom: 8px; padding: 15px;
+}
+.algo-btn b { display: block; font-size: 14px; margin-bottom: 3px; }
+.algo-btn span { display: block; font-size: 11px; color: var(--muted); }
+.algo-btn.active {
+    background: var(--algo-active-bg); border-color: var(--accent);
+}
+
+/* Gantt Chart */
+#ganttChart { display: flex; overflow-x: auto; padding: 15px 0; gap: 4px; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); margin-top: 10px; }
+.gantt-block {
+    min-width: 80px; height: 65px; border-radius: 8px;
+    background: var(--accent); color: white;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    font-weight: bold; font-size: 14px; border: 1px solid rgba(255,255,255,0.3);
+}
+.gantt-block.idle { background: var(--idle-bg); color: #ddd; }
+.gantt-block small { font-size: 10px; margin-top: 4px; opacity: 0.8; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
+.stat-card { background: var(--algo-bg); border: 1px solid var(--line); border-radius: 12px; padding: 15px; text-align: center; }
+.stat-card label { display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+.stat-card strong { font-size: 20px; color: var(--accent); }
+
+.best-algo { background-color: #e6fffa; color: #00875a; font-weight: bold; border-radius: 4px; }
+
+.results-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 992px) { .results-grid { grid-template-columns: 2fr 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- =======================================================
+     CLEAN TECHNOLOGY BACKGROUND OVERLAY
+======================================================== -->
+<div class="tech-bg-overlay">
+    <div class="tech-grid"></div>
+    
+    <svg class="circuit-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+        <!-- Motherboard & Microchip Vector Traces -->
+        <g stroke="#0D47A1" stroke-width="1.5" fill="none">
+            <!-- Top Left Traces -->
+            <path d="M 50 100 H 250 L 320 170 V 300" />
+            <path d="M 100 50 V 200 L 180 280 H 350" />
+            <!-- Top Right Traces -->
+            <path d="M 950 150 H 750 L 680 220 V 380" />
+            <path d="M 850 50 V 180 L 780 250 H 600" />
+            <!-- Bottom Left Traces -->
+            <path d="M 80 900 H 220 L 300 820 V 650" />
+            <!-- Bottom Right Traces -->
+            <path d="M 920 850 V 700 L 800 580 H 650" />
+
+            <!-- Central Microchip Frame -->
+            <rect x="420" y="420" width="160" height="160" rx="10" stroke-width="2"/>
+            <rect x="450" y="450" width="100" height="100" stroke-width="1"/>
+            
+            <!-- Bus Lines from Central Chip -->
+            <line x1="420" y1="450" x2="350" y2="450" />
+            <line x1="420" y1="500" x2="320" y2="500" />
+            <line x1="420" y1="550" x2="350" y2="550" />
+            <line x1="580" y1="450" x2="650" y2="450" />
+            <line x1="580" y1="500" x2="680" y2="500" />
+            <line x1="580" y1="550" x2="650" y2="550" />
+        </g>
+        
+        <!-- Glowing Circuit Nodes -->
+        <g fill="#2196F3">
+            <circle class="circuit-node-dot" cx="320" cy="170" r="5" />
+            <circle class="circuit-node-dot" cx="680" cy="220" r="5" />
+            <circle class="circuit-node-dot" cx="300" cy="820" r="5" />
+            <circle class="circuit-node-dot" cx="800" cy="580" r="5" />
+            <circle class="circuit-node-dot" cx="320" cy="500" r="4" />
+            <circle class="circuit-node-dot" cx="680" cy="500" r="4" />
+        </g>
+    </svg>
+</div>
+
+<!-- =======================================================
+     HOME PAGE
+======================================================== -->
+<div id="coverPage">
+    <div class="cover-content">
+        <div class="project-subtitle">Midterm Project</div>
+        <div class="course-topic">Operating System</div>
+        
+        <h1 class="cover-title">KALI</h1>
+        
+        <div class="cover-names">
+            Alvarina, Ivie T.<br>
+            Baron, Ivy M.<br>
+            Lumanog, John Paul L.<br>
+            Panes, April Ann G.
+        </div>
+        
+        <div class="cover-course">BSCpE 31004</div>
+        
+        <button class="btn-proceed" onclick="startSimulator()">PROCEED TO SIMULATOR ▶</button>
+    </div>
+</div>
+
+<!-- =======================================================
+     SIMULATOR PROGRAM WRAPPER
+======================================================== -->
+<div id="simulatorView">
+
+    <header>
+        <div class="brand">
+            <h1>CPU Scheduling Simulator</h1>
+            <button class="btn-back" style="padding: 6px 12px; font-size: 12px; margin-left: 10px;" onclick="returnToCover()">Home</button>
+        </div>
+        
+        <div class="progres-tracker">
+            <span class="step-label">Step 1: Input</span>
+            <div class="step-dot active" id="dot1"></div>
+            <div class="step-dot" id="dot2"></div>
+            <span class="step-label">Step 2: Results</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- STEP 1: INPUT & ALGORITHM -->
+        <div id="step1" class="sim-step active">
+            <div class="input-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>1. Add Processes</h2>
+                        <p class="hint">Enter process parameters. Priority: Lower number = higher priority.</p>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Process ID</th>
+                                <th>Arrival Time</th>
+                                <th>Burst Time</th>
+                                <th>Priority</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inputTableBody"></tbody>
+                    </table>
+
+                    <div style="margin-top: 15px; display: flex; gap: 8px;">
+                        <button onclick="addProcessRow()">+ Add Process</button>
+                        <button class="btn-back" onclick="loadExampleData()">Load Example</button>
+                        <button class="btn-danger" style="margin-left:auto" onclick="clearProcesses()">Clear All</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>2. Select Algorithm</h2>
+                        <p class="hint">Choose a scheduling algorithm.</p>
+                    </div>
+
+                    <div id="algoList">
+                        <button class="algo-btn active" data-algo="FCFS" onclick="selectAlgo(this)"><b>FCFS</b> <span>First-Come, First-Served</span></button>
+                        <button class="algo-btn" data-algo="SJF" onclick="selectAlgo(this)"><b>SJF</b> <span>Shortest Job First (Non-preemptive)</span></button>
+                        <button class="algo-btn" data-algo="SRTF" onclick="selectAlgo(this)"><b>SRTF</b> <span>Shortest Remaining Time First</span></button>
+                        <button class="algo-btn" data-algo="RR" onclick="selectAlgo(this)"><b>Round Robin</b> <span>Preemptive with Quantum</span></button>
+                        <button class="algo-btn" data-algo="Priority" onclick="selectAlgo(this)"><b>Priority</b> <span>Non-preemptive</span></button>
+                    </div>
+
+                    <div id="quantumInputWrap" style="display: none; margin-top: 15px; border-top: 1px solid var(--line); padding-top: 15px;">
+                        <label class="hint" style="font-weight:bold; display:block; margin-bottom:5px;">Time Quantum (for RR)</label>
+                        <input type="number" id="timeQuantum" value="2" min="1">
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn-run" onclick="runFullSimulation()">▶ Run Simulation</button>
+            </div>
+        </div>
+
+        <!-- STEP 2: RESULTS -->
+        <div id="step2" class="sim-step">
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Gantt Chart (Execution Timeline)</h2>
+                    <p class="hint">Algorithm: <span id="selectedAlgoName" style="font-weight:bold; color:var(--accent);"></span></p>
+                </div>
+                <div id="ganttChart"></div>
+            </div>
+
+            <div class="results-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Process Performance Metrics</h2>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Process</th><th>AT</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metricsTableBody"></tbody>
+                    </table>
+
+                    <div class="stats-grid">
+                        <div class="stat-card"><label>Avg Turnaround Time</label><strong id="avgTAT">0.00</strong></div>
+                        <div class="stat-card"><label>Avg Waiting Time</label><strong id="avgWT">0.00</strong></div>
+                        <div class="stat-card"><label>Avg Response Time</label><strong id="avgRT">0.00</strong></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Algorithm Comparison</h2>
+                        <p class="hint">Average Times (ms)</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Algorithm</th>
+                                <th>Avg TAT</th>
+                                <th>Avg WT</th>
+                                <th>Avg RT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparisonTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Retry Button Centered at Bottom -->
+            <div style="text-align: center; margin-top: 40px;">
+                <button class="btn-retry" onclick="goToStep(1)">Retry / Edit Simulation</button>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+function startSimulator() {
+    document.getElementById('coverPage').style.display = 'none';
+    document.getElementById('simulatorView').style.display = 'block';
+    goToStep(1);
+}
+
+function returnToCover() {
+    document.getElementById('simulatorView').style.display = 'none';
+    document.getElementById('coverPage').style.display = 'flex';
+}
+
+let currentStep = 1;
+let processesData = [];
+let selectedAlgorithm = 'FCFS';
+
+document.addEventListener('DOMContentLoaded', () => { loadExampleData(); });
+
+function goToStep(stepNumber) {
+    document.getElementById(`step${currentStep}`).classList.remove('active');
+    document.getElementById(`step${stepNumber}`).classList.add('active');
+    currentStep = stepNumber;
+    
+    if(stepNumber === 1) {
+        document.getElementById('dot1').classList.add('active');
+        document.getElementById('dot1').classList.remove('completed');
+        document.getElementById('dot2').classList.remove('active');
+    } else {
+        document.getElementById('dot1').classList.remove('active');
+        document.getElementById('dot1').classList.add('completed');
+        document.getElementById('dot2').classList.add('active');
+        window.scrollTo(0, 0);
+    }
+}
+
+function addProcessRow(id='', at='', bt='', pr='') {
+    const tbody = document.getElementById('inputTableBody');
+    const pId = id || `P${tbody.rows.length + 1}`;
+    const row = tbody.insertRow();
+    row.className = 'process-input-row';
+    row.innerHTML = `
+        <td><input type="text" class="p-id" value="${pId}"></td>
+        <td><input type="number" class="p-at" value="${at}" min="0"></td>
+        <td><input type="number" class="p-bt" value="${bt}" min="1"></td>
+        <td><input type="number" class="p-pr" value="${pr}" min="0"></td>
+        <td><button class="btn-danger" onclick="deleteRow(this)">×</button></td>
+    `;
+}
+
+function deleteRow(btn) {
+    const row = btn.parentNode.parentNode;
+    if (document.getElementById('inputTableBody').rows.length > 1) {
+        row.parentNode.removeChild(row);
+    } else {
+        alert("At least one process is required.");
+    }
+}
+
+function clearProcesses() {
+    document.getElementById('inputTableBody').innerHTML = '';
+    addProcessRow();
+}
+
+function loadExampleData() {
+    const tbody = document.getElementById('inputTableBody');
+    tbody.innerHTML = '';
+    addProcessRow('P1', 0, 8, 2);
+    addProcessRow('P2', 1, 4, 1);
+    addProcessRow('P3', 2, 2, 3);
+    addProcessRow('P4', 3, 5, 2);
+    addProcessRow('P5', 4, 3, 2);
+}
+
+function validateAndCollectInput() {
+    processesData = [];
+    const rows = document.querySelectorAll('.process-input-row');
+    let isValid = true;
+    let seenIds = new Set();
+
+    rows.forEach(row => {
+        const idInput = row.querySelector('.p-id');
+        const id = idInput.value.trim();
+        const at = parseInt(row.querySelector('.p-at').value);
+        const bt = parseInt(row.querySelector('.p-bt').value);
+        const pr = parseInt(row.querySelector('.p-pr').value);
+
+        if (!id || isNaN(at) || isNaN(bt) || isNaN(pr) || at < 0 || bt < 1 || pr < 0 || seenIds.has(id)) {
+            isValid = false;
+        } else {
+            seenIds.add(id);
+            processesData.push({ id, at, bt, pr, initialOrder: processesData.length });
+        }
+    });
+
+    if (!isValid) alert("Please enter valid process data.");
+    return isValid;
+}
+
+function selectAlgo(btn) {
+    document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedAlgorithm = btn.dataset.algo;
+    document.getElementById('quantumInputWrap').style.display = (selectedAlgorithm === 'RR') ? 'block' : 'none';
+}
+
+function runFullSimulation() {
+    if (!validateAndCollectInput()) return;
+    const quantum = parseInt(document.getElementById('timeQuantum').value) || 2;
+    const simulationResult = calculateSimulation(selectedAlgorithm, processesData, quantum);
+    const comparisonData = calculateComparison(processesData, quantum);
+    
+    document.getElementById('selectedAlgoName').textContent = selectedAlgorithm;
+    renderGanttChart(simulationResult.gantt);
+    renderMetricsTable(simulationResult.processStats);
+    renderComparisonTable(comparisonData);
+
+    goToStep(2);
+}
+
+function calculateSimulation(algo, processes, quantum) {
+    let workingProcesses = processes.map(p => ({...p, remainingTime: p.bt, startTime: -1, finishTime: 0}));
+    let gantt = []; currentTime = 0; completed = 0; n = workingProcesses.length;
+    workingProcesses.sort((a, b) => a.at - b.at || a.initialOrder - b.initialOrder);
+
+    if (algo === 'FCFS') {
+        workingProcesses.forEach(p => {
+            if (currentTime < p.at) { gantt.push({id: 'IDLE', start: currentTime, end: p.at}); currentTime = p.at; }
+            p.startTime = currentTime; gantt.push({id: p.id, start: currentTime, end: currentTime + p.bt});
+            currentTime += p.bt; p.finishTime = currentTime;
+        });
+    } else if (algo === 'SJF') {
+        let isCompleted = new Array(n).fill(false);
+        while (completed < n) {
+            let idx = -1; let minBt = Infinity;
+            for (let i = 0; i < n; i++) {
+                if (workingProcesses[i].at <= currentTime && !isCompleted[i]) {
+                    if (workingProcesses[i].bt < minBt) { minBt = workingProcesses[i].bt; idx = i; }
+                }
+            }
+            if (idx !== -1) {
+                let p = workingProcesses[idx]; p.startTime = currentTime; gantt.push({id: p.id, start: currentTime, end: currentTime + p.bt});
+                currentTime += p.bt; p.finishTime = currentTime; isCompleted[idx] = true; completed++;
+            } else {
+                let nextArrival = Infinity; for(let i=0; i<n; i++) { if(!isCompleted[i] && workingProcesses[i].at > currentTime) nextArrival = Math.min(nextArrival, workingProcesses[i].at); }
+                gantt.push({id: 'IDLE', start: currentTime, end: nextArrival}); currentTime = nextArrival;
+            }
+        }
+    } else if (algo === 'SRTF') {
+        while (completed < n) {
+            let idx = -1; let minRemaining = Infinity;
+            for (let i = 0; i < n; i++) {
+                if (workingProcesses[i].at <= currentTime && workingProcesses[i].remainingTime > 0) {
+                    if (workingProcesses[i].remainingTime < minRemaining) { minRemaining = workingProcesses[i].remainingTime; idx = i; }
+                }
+            }
+            if (idx !== -1) {
+                let p = workingProcesses[idx]; if (p.startTime === -1) p.startTime = currentTime;
+                if (gantt.length > 0 && gantt[gantt.length - 1].id === p.id && gantt[gantt.length - 1].end === currentTime) gantt[gantt.length - 1].end++;
+                else gantt.push({id: p.id, start: currentTime, end: currentTime + 1});
+                p.remainingTime--; currentTime++; if (p.remainingTime === 0) { p.finishTime = currentTime; completed++; }
+            } else {
+                if (gantt.length > 0 && gantt[gantt.length - 1].id === 'IDLE') gantt[gantt.length - 1].end++;
+                else gantt.push({id: 'IDLE', start: currentTime, end: currentTime + 1}); currentTime++;
+            }
+        }
+    } else if (algo === 'RR') {
+        let readyQueue = []; let isArrived = new Array(n).fill(false);
+        workingProcesses.forEach((p, i) => { if (p.at <= currentTime) { readyQueue.push(i); isArrived[i] = true; } });
+        while (completed < n) {
+            if (readyQueue.length > 0) {
+                let idx = readyQueue.shift(); let p = workingProcesses[idx]; if (p.startTime === -1) p.startTime = currentTime;
+                let timeSlice = Math.min(p.remainingTime, quantum); gantt.push({id: p.id, start: currentTime, end: currentTime + timeSlice});
+                for(let t=0; t<timeSlice; t++) { currentTime++; workingProcesses.forEach((ap, ai) => { if (ap.at <= currentTime && !isArrived[ai] && ap.remainingTime > 0) { readyQueue.push(ai); isArrived[ai] = true; } }); }
+                p.remainingTime -= timeSlice; if (p.remainingTime === 0) { p.finishTime = currentTime; completed++; } else { readyQueue.push(idx); }
+            } else {
+                gantt.push({id: 'IDLE', start: currentTime, end: currentTime + 1}); currentTime++;
+                workingProcesses.forEach((ap, ai) => { if (ap.at <= currentTime && !isArrived[ai] && ap.remainingTime > 0) { readyQueue.push(ai); isArrived[ai] = true; } });
+            }
+        }
+    } else if (algo === 'Priority') {
+        let isCompleted = new Array(n).fill(false);
+        while (completed < n) {
+            let idx = -1; let minPriority = Infinity;
+            for (let i = 0; i < n; i++) {
+                if (workingProcesses[i].at <= currentTime && !isCompleted[i]) {
+                    if (workingProcesses[i].pr < minPriority) { minPriority = workingProcesses[i].pr; idx = i; }
+                }
+            }
+            if (idx !== -1) {
+                let p = workingProcesses[idx]; p.startTime = currentTime; gantt.push({id: p.id, start: currentTime, end: currentTime + p.bt});
+                currentTime += p.bt; p.finishTime = currentTime; isCompleted[idx] = true; completed++;
+            } else {
+                let nextArrival = Infinity; for(let i=0; i<n; i++) { if(!isCompleted[i] && workingProcesses[i].at > currentTime) nextArrival = Math.min(nextArrival, workingProcesses[i].at); }
+                gantt.push({id: 'IDLE', start: currentTime, end: nextArrival}); currentTime = nextArrival;
+            }
+        }
+    }
+
+    let processStats = workingProcesses.map(p => {
+        const tat = p.finishTime - p.at; const wt = tat - p.bt; const rt = p.startTime - p.at;
+        return { ...p, tat: tat, wt: Math.max(0, wt), rt: Math.max(0, rt) };
+    });
+    return {gantt, processStats};
+}
+
+function calculateComparison(processes, quantum) {
+    const algos = ['FCFS', 'SJF', 'SRTF', 'RR', 'Priority'];
+    return algos.map(algo => {
+        const res = calculateSimulation(algo, processes, quantum);
+        const n = res.processStats.length;
+        return {
+            name: algo,
+            avgTat: (res.processStats.reduce((s, p) => s + p.tat, 0) / n).toFixed(2),
+            avgWt: (res.processStats.reduce((s, p) => s + p.wt, 0) / n).toFixed(2),
+            avgRt: (res.processStats.reduce((s, p) => s + p.rt, 0) / n).toFixed(2)
+        };
+    });
+}
+
+function renderGanttChart(ganttData) {
+    const container = document.getElementById('ganttChart');
+    container.innerHTML = '';
+    ganttData.filter(b => (b.end - b.start) > 0).forEach(block => {
+        const duration = block.end - block.start;
+        const isIdle = block.id === 'IDLE';
+        const el = document.createElement('div');
+        el.className = `gantt-block ${isIdle ? 'idle' : ''}`;
+        el.style.flex = `${duration} 0 auto`;
+        el.innerHTML = `<div>${isIdle ? 'Idle' : block.id}</div><small>${block.start}-${block.end}</small>`;
+        container.appendChild(el);
+    });
+}
+
+function renderMetricsTable(processStats) {
+    const tbody = document.getElementById('metricsTableBody');
+    tbody.innerHTML = '';
+    let totalTat = 0, totalWt = 0, totalRt = 0; n = processStats.length;
+
+    processStats.sort((a, b) => a.initialOrder - b.initialOrder).forEach(p => {
+        totalTat += p.tat; totalWt += p.wt; totalRt += p.rt;
+        const row = tbody.insertRow();
+        row.innerHTML = `<td><b>${p.id}</b></td><td>${p.at}</td><td>${p.bt}</td><td>${p.finishTime}</td><td style="color:var(--accent); font-weight:bold;">${p.tat}</td><td>${p.wt}</td><td>${p.rt}</td>`;
+    });
+
+    document.getElementById('avgTAT').textContent = (totalTat / n).toFixed(2);
+    document.getElementById('avgWT').textContent = (totalWt / n).toFixed(2);
+    document.getElementById('avgRT').textContent = (totalRt / n).toFixed(2);
+}
+
+function renderComparisonTable(comparisonData) {
+    const tbody = document.getElementById('comparisonTableBody');
+    tbody.innerHTML = '';
+    let minTat = Math.min(...comparisonData.map(d => parseFloat(d.avgTat)));
+    let minWt = Math.min(...comparisonData.map(d => parseFloat(d.avgWt)));
+    let minRt = Math.min(...comparisonData.map(d => parseFloat(d.avgRt)));
+
+    comparisonData.forEach(algo => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td><b>${algo.name}</b></td>
+            <td class="${parseFloat(algo.avgTat) === minTat ? 'best-algo' : ''}">${algo.avgTat}</td>
+            <td class="${parseFloat(algo.avgWt) === minWt ? 'best-algo' : ''}">${algo.avgWt}</td>
+            <td class="${parseFloat(algo.avgRt) === minRt ? 'best-algo' : ''}">${algo.avgRt}</td>
+        `;
+    });
+}
+</script>
+
+</body>
+</html>
